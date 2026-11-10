@@ -713,13 +713,13 @@ int ObVectorIndexUtil::get_vector_from_text_by_embedding(ObIAllocator &allocator
     } else if (OB_FAIL(ai_service_guard.get_ai_endpoint_by_ai_model_name(endpoint_str, endpoint_info))) {
     } else {
       int64_t dim = param.dim_;
-      ObJsonInt *dim_json = nullptr;
-      ObJsonObject *config = nullptr;
+      ObIJsonBase *dim_json = nullptr;
+      ObIJsonBase *config = nullptr;
       ObAIFuncModel model(allocator, *ai_fun_info, *endpoint_info);
       ObString query_text_copy = query_text;  // Create a non-const copy
       if (OB_FAIL(ObAIFuncJsonUtils::get_json_object(allocator, config))) {
       } else if (OB_FAIL(ObAIFuncJsonUtils::get_json_int(allocator, dim, dim_json))) {
-      } else if (OB_FAIL(config->add("dimensions", dim_json))) {
+      } else if (OB_FAIL(ObAIFuncJsonUtils::object_set(allocator, config, "dimensions", dim_json))) {
       } else if (OB_FAIL(model.call_dense_embedding(query_text_copy, config, result))) {
       }
     }
@@ -2332,17 +2332,8 @@ int ObVectorIndexUtil::check_extra_info_size(const ObTableSchema &tbl_schema,
           LOG_USER_ERROR(OB_INVALID_ARGUMENT, "rowkey_size > extra_info_max_size");
         }
       } else {
-        // !is_extra_max_size_set, means use seesion extra param
-        uint64_t session_extra_info_max_size = 0;
-        // todo(wmj): not use session extra param, because some mr not ready to use extra_info
-        // ***if use session extra param, need update extra_info_max_size in index param***
-        // if (OB_FAIL(session_info.get_ob_hnsw_extra_info_max_size(session_extra_info_max_size))) {
-        //   LOG_WARN("fail to get session extra info max size", K(ret));
-        // }
-        if (extra_info_actual_size > session_extra_info_max_size) {
-          LOG_INFO("extra_info_actual_size larger than session_extra_info_max_size", K(extra_info_actual_size), K(rowkey_size), K(session_extra_info_max_size));
-          extra_info_actual_size = 0;
-        }
+        // Automatic extra info is disabled unless the index specifies a size.
+        extra_info_actual_size = 0;
       }
     }
   }
